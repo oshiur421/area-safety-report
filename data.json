@@ -1,5 +1,5 @@
 {
-  "safetyScore": 42,
+  "safetyScore": 63,
   "unsafeRoads": [
     {
       "id": "road-001",
@@ -103,6 +103,59 @@
       "description": "Streetlights are completely dead under the bridge for the past 2 weeks. Pedestrians feel very insecure crossing at night.",
       "timestamp": "2026-10-19T11:45:00.000Z",
       "status": "pending"
+    }
+  ],
+  "totalThreats": 3,
+  "totalCritical": 2,
+  "totalModerate": 1,
+  "areaScores": [
+    {
+      "areaName": "Dhanmondi",
+      "totalThreats": 2,
+      "criticalCount": 2,
+      "moderateCount": 0,
+      "score": 70,
+      "status": "Safe"
+    },
+    {
+      "areaName": "Sadarghat",
+      "totalThreats": 1,
+      "criticalCount": 0,
+      "moderateCount": 1,
+      "score": 93,
+      "status": "Safe"
+    },
+    {
+      "areaName": "Mirpur",
+      "totalThreats": 0,
+      "criticalCount": 0,
+      "moderateCount": 0,
+      "score": 100,
+      "status": "Safe"
+    },
+    {
+      "areaName": "Uttara",
+      "totalThreats": 0,
+      "criticalCount": 0,
+      "moderateCount": 0,
+      "score": 100,
+      "status": "Safe"
+    },
+    {
+      "areaName": "Farmgate",
+      "totalThreats": 0,
+      "criticalCount": 0,
+      "moderateCount": 0,
+      "score": 100,
+      "status": "Safe"
+    },
+    {
+      "areaName": "Gulshan",
+      "totalThreats": 0,
+      "criticalCount": 0,
+      "moderateCount": 0,
+      "score": 100,
+      "status": "Safe"
     }
   ]
 }

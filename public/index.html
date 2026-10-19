@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SAFEZONE — Area Safety Report & Red-Zone Road Marking</title>
-  <meta name="description" content="Real-time area safety report and red-zone road marking system for Dhaka with crowdsourced user incident reporting." />
+  <title>SAFEZONE — Automated Area Safety Score & Red-Zone Road Marking</title>
+  <meta name="description" content="Real-time automated area safety report and red-zone road marking system for Dhaka with threat-driven automated scoring." />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -31,8 +31,8 @@
     .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 
     /* Card hover */
-    .incident-card { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
-    .incident-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    .incident-card, .area-card { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+    .incident-card:hover, .area-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
 
     /* Button press */
     .btn-press { transition: transform 0.1s, opacity 0.15s; }
@@ -71,7 +71,7 @@
       </div>
       <div>
         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">SAFEZONE AREA REPORT</h1>
-        <p class="text-[10px] text-slate-400 hidden sm:block tracking-wide">RED-ZONE ROAD MARKING &amp; CROWDSOURCED SAFETY FEED</p>
+        <p class="text-[10px] text-slate-400 hidden sm:block tracking-wide">AUTOMATED THREAT-DRIVEN SAFETY INDEX &amp; RED-ZONE MARKING</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -89,23 +89,69 @@
 <!-- ============ USER VIEW ============ -->
 <main id="user-view" class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-  <!-- Safety Score Banner -->
+  <!-- Automated Safety Score Banner -->
   <section id="score-banner" class="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-800 to-slate-900 p-6 sm:p-8 shadow-xl shadow-slate-950/40">
     <div class="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-red-500/10 blur-3xl pointer-events-none"></div>
     <div class="flex flex-col sm:flex-row sm:items-center gap-6">
-      <div class="flex-shrink-0 w-28 h-28 rounded-full border-4 flex items-center justify-center text-3xl font-black transition-colors" id="score-circle">
-        <span id="score-number">--</span><span class="text-lg">%</span>
+      <div class="flex-shrink-0 w-32 h-32 rounded-full border-4 flex flex-col items-center justify-center transition-colors relative" id="score-circle">
+        <div class="text-3xl font-black flex items-baseline">
+          <span id="score-number">--</span><span class="text-lg">%</span>
+        </div>
+        <span id="score-badge-label" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mt-0.5">Calculating</span>
       </div>
       <div class="flex-1 space-y-3">
-        <div class="flex items-center justify-between">
-          <h2 class="text-2xl font-bold">Area Safety Score</h2>
-          <span class="text-xs px-2.5 py-1 rounded-md bg-slate-700/70 text-slate-300 font-mono">Live Index</span>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h2 class="text-2xl font-bold">Dhaka Metropolitan Area Safety Score</h2>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">স্বয়ংক্রিয় নিরাপত্তা সূচক — Real-time automated calculation based on verified incidents &amp; approved reports</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="total-threats-badge" class="text-xs px-3 py-1 rounded-lg bg-slate-950 border border-slate-700 text-slate-300 font-bold flex items-center gap-1.5">
+              <span>⚡ 0 Active Threats</span>
+            </span>
+            <span id="threats-crit-badge" class="text-xs px-2.5 py-1 rounded-lg bg-red-950/70 border border-red-800/60 text-red-300 font-bold">
+              0 Critical
+            </span>
+            <span id="threats-mod-badge" class="text-xs px-2.5 py-1 rounded-lg bg-amber-950/70 border border-amber-800/60 text-amber-300 font-bold">
+              0 Moderate
+            </span>
+          </div>
         </div>
-        <p class="text-slate-400 text-sm" id="score-label">Calculating…</p>
+
+        <p class="text-slate-300 text-sm font-medium" id="score-label">Calculating active threats…</p>
         <div class="w-full h-4 rounded-full bg-slate-700/80 overflow-hidden shadow-inner">
           <div id="score-bar" class="progress-fill h-full rounded-full" style="width:0%"></div>
         </div>
+
+        <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-1">
+          <span>📐 Auto Formula: Base 100% − (15% × Critical) − (7% × Moderate)</span>
+          <span class="text-slate-500">Clamped between 0% and 100%</span>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ==================== AREA-BY-AREA SAFETY BREAKDOWN ==================== -->
+  <section class="space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 class="text-xl font-bold flex items-center gap-2 text-white">
+          <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+          Area-by-Area Safety Matrix &amp; Threat Index
+        </h2>
+        <p class="text-xs text-slate-400">এলাকা ভিত্তিক নিরাপত্তা ও সক্রিয় হুমকি পরিস্থিতি — Compare safety score across key areas of Dhaka</p>
+      </div>
+      <span class="text-xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+        🟢 &ge;70% Safe | 🟡 40-69% Moderate | 🔴 &lt;40% Red-Zone
+      </span>
+    </div>
+
+    <!-- Area Cards Grid -->
+    <div id="area-safety-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <!-- Dynamic Area Cards injected here -->
     </div>
   </section>
 
@@ -200,14 +246,14 @@
             <input type="radio" name="user-rep-severity" value="Moderate" checked class="accent-amber-500 w-4 h-4"/>
             <div>
               <span class="text-xs font-bold text-amber-400 block">🟡 Moderate</span>
-              <span class="text-[10px] text-slate-400">মাঝারি ঝুঁকি</span>
+              <span class="text-[10px] text-slate-400">মাঝারি ঝুঁকি (-7%)</span>
             </div>
           </label>
           <label class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/80 border border-slate-700 cursor-pointer hover:border-red-500/60 transition-all">
             <input type="radio" name="user-rep-severity" value="Critical" class="accent-red-500 w-4 h-4"/>
             <div>
               <span class="text-xs font-bold text-red-400 block">🔴 Critical</span>
-              <span class="text-[10px] text-slate-400">মারাত্মক ঝুঁকি</span>
+              <span class="text-[10px] text-slate-400">মারাত্মক ঝুঁকি (-15%)</span>
             </div>
           </label>
         </div>
@@ -250,7 +296,7 @@
 
       <!-- Submit Button -->
       <div class="sm:col-span-2 flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-        <span class="text-xs text-slate-400">🛡️ All reports undergo safety verification before display on the official map.</span>
+        <span class="text-xs text-slate-400">🛡️ Approved reports automatically adjust the area safety score and appear on the live map.</span>
         <button type="submit" id="btn-submit-report" class="w-full sm:w-auto btn-press flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 hover:from-red-500 hover:to-orange-400 text-white font-bold text-sm shadow-xl shadow-red-950/50 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
           <span>Submit Safety Report</span>
@@ -264,7 +310,7 @@
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold flex items-center gap-2">
         <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Past Incident Reports &amp; Verified Warnings
+        Active Incident Reports &amp; Verified Warnings
       </h2>
       <span id="incidents-count-badge" class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400">0 Reports</span>
     </div>
@@ -276,16 +322,75 @@
 <!-- ============ ADMIN VIEW ============ -->
 <main id="admin-view" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
 
-  <!-- Safety Score Controller -->
-  <section class="rounded-2xl border border-slate-700/60 bg-slate-800/60 p-6 space-y-4 shadow-lg shadow-black/20">
-    <h2 class="text-lg font-bold flex items-center gap-2">⚙️ Safety Score Controller</h2>
-    <div class="flex flex-wrap items-end gap-4">
-      <div class="flex-1 min-w-[200px] space-y-2">
-        <label class="text-sm text-slate-400">Area Safety Percentage (0–100%)</label>
-        <input id="admin-score-input" type="range" min="0" max="100" value="50" class="w-full accent-red-500 cursor-pointer" oninput="document.getElementById('admin-score-val').textContent=this.value+'%'" />
-        <span id="admin-score-val" class="text-2xl font-black text-white">50%</span>
+  <!-- ==================== AUTO-CALCULATED SAFETY SCORE (ACTIVE THREAT-DRIVEN) ==================== -->
+  <section class="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-800/95 via-slate-800/80 to-slate-900/95 p-6 sm:p-7 space-y-6 shadow-xl shadow-black/25">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            Auto-Calculated Safety Score
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Active Threat-Driven</span>
+          </h2>
+          <p class="text-xs text-slate-400">Manual slider override is disabled. Scores are 100% automated in real-time based on active verified incidents and approved crowdsourced reports.</p>
+        </div>
       </div>
-      <button onclick="submitScore()" class="btn-press px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">Update Score</button>
+      <div class="text-right">
+        <span class="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-3 py-1.5 rounded-lg border border-cyan-800/40 inline-block">
+          ⚡ Live Synchronized via Socket.io
+        </span>
+      </div>
+    </div>
+
+    <!-- Live Stat Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-700/60 text-center space-y-1">
+        <span class="text-xs text-slate-400 uppercase font-semibold">City Safety Score</span>
+        <div id="admin-overall-score-display" class="text-3xl font-black text-white">--%</div>
+        <span id="admin-overall-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">Calculating</span>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-700/60 text-center space-y-1">
+        <span class="text-xs text-slate-400 uppercase font-semibold">Total Active Threats</span>
+        <div id="admin-threats-count" class="text-3xl font-black text-cyan-400">0</div>
+        <span class="text-[10px] text-slate-400">Incidents + Approved Reports</span>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-red-900/40 text-center space-y-1">
+        <span class="text-xs text-red-400 uppercase font-semibold">Critical Threats</span>
+        <div id="admin-crit-count" class="text-3xl font-black text-red-500">0</div>
+        <span class="text-[10px] text-red-400/80">−15% deduction each</span>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900/80 border border-amber-900/40 text-center space-y-1">
+        <span class="text-xs text-amber-400 uppercase font-semibold">Moderate Threats</span>
+        <div id="admin-mod-count" class="text-3xl font-black text-amber-400">0</div>
+        <span class="text-[10px] text-amber-400/80">−7% deduction each</span>
+      </div>
+    </div>
+
+    <!-- Live Area-by-Area Breakdown Table -->
+    <div class="space-y-3 pt-2">
+      <h3 class="text-sm font-bold text-slate-200 flex items-center justify-between">
+        <span>Area-by-Area Threat &amp; Score Distribution</span>
+        <span class="text-xs font-normal text-slate-400">Sorted by threat density</span>
+      </h3>
+      <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-400 uppercase font-semibold text-[10px] border-b border-slate-700/60">
+            <tr>
+              <th class="py-3 px-4">Area Name</th>
+              <th class="py-3 px-4">Active Threats</th>
+              <th class="py-3 px-4">Critical (15%)</th>
+              <th class="py-3 px-4">Moderate (7%)</th>
+              <th class="py-3 px-4">Auto Safety %</th>
+              <th class="py-3 px-4">Risk Status</th>
+            </tr>
+          </thead>
+          <tbody id="admin-area-score-tbody" class="divide-y divide-slate-700/50 bg-slate-900/40 font-medium">
+            <!-- Dynamic rows injected here -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -298,7 +403,7 @@
         </div>
         <div>
           <h2 class="text-lg font-bold text-white">Pending User Reports (Crowdsourced)</h2>
-          <p class="text-xs text-slate-400">Review incoming reports from citizens. Approved reports immediately appear in the official safety feed and live map.</p>
+          <p class="text-xs text-slate-400">Review incoming reports from citizens. Approved reports automatically deduct from the area's safety score and appear on the live map.</p>
         </div>
       </div>
       <span id="pending-reports-badge" class="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
@@ -341,7 +446,8 @@
 
   <!-- Add Incident Form -->
   <section class="rounded-2xl border border-slate-700/60 bg-slate-800/60 p-6 space-y-4 shadow-lg shadow-black/20">
-    <h2 class="text-lg font-bold flex items-center gap-2">📝 Add Past Incident Report (Admin)</h2>
+    <h2 class="text-lg font-bold flex items-center gap-2">📝 Add Official Incident Report (Admin)</h2>
+    <p class="text-xs text-slate-400">Adding or deleting incidents will automatically recalculate the overall and area-specific safety scores.</p>
     <div class="grid sm:grid-cols-2 gap-4">
       <div>
         <label class="text-xs text-slate-400">Incident Title</label>
@@ -358,8 +464,8 @@
       <div>
         <label class="text-xs text-slate-400">Severity</label>
         <select id="inc-severity" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="Critical">🔴 Critical</option>
-          <option value="Warning">🟡 Warning</option>
+          <option value="Critical">🔴 Critical (−15% Score)</option>
+          <option value="Warning">🟡 Moderate / Warning (−7% Score)</option>
         </select>
       </div>
       <div class="sm:col-span-2">
@@ -367,7 +473,7 @@
         <textarea id="inc-desc" rows="3" placeholder="Describe what happened in detail…" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
       </div>
     </div>
-    <button onclick="addIncident()" class="btn-press px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">Submit Incident Report</button>
+    <button onclick="addIncident()" class="btn-press px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">Submit Incident &amp; Recalculate Score</button>
 
     <!-- Existing incidents list -->
     <div class="mt-4 space-y-2">
@@ -379,7 +485,7 @@
 
 <!-- ============ TOAST ============ -->
 <div id="toast" class="fixed bottom-6 right-6 z-[99999] hidden transition-all duration-300">
-  <div class="px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold flex items-center gap-2 bg-slate-850 border border-slate-600 backdrop-blur-md"></div>
+  <div class="px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold flex items-center gap-2 bg-slate-900 border border-slate-600 backdrop-blur-md"></div>
 </div>
 
 <script>
@@ -389,7 +495,31 @@
 const socket = io();
 let currentView = 'user';
 let isAdmin = false;
-let data = { safetyScore: 0, unsafeRoads: [], incidents: [], userReports: [] };
+let data = {
+  safetyScore: 100,
+  totalThreats: 0,
+  totalCritical: 0,
+  totalModerate: 0,
+  areaScores: [],
+  unsafeRoads: [],
+  incidents: [],
+  userReports: []
+};
+
+// Area Center Coordinates Map for zooming
+const AREA_COORDINATES = {
+  'Dhanmondi': [23.7465, 90.3760],
+  'Mirpur': [23.8069, 90.3687],
+  'Sadarghat': [23.7080, 90.4120],
+  'Uttara': [23.8759, 90.3795],
+  'Farmgate': [23.7570, 90.3892],
+  'Gulshan': [23.7925, 90.4078],
+  'Banani': [23.7940, 90.4043],
+  'Mohakhali': [23.7776, 90.4054],
+  'Motijheel': [23.7330, 90.4172],
+  'Mohammadpur': [23.7658, 90.3584],
+  'Shahbagh': [23.7383, 90.3957]
+};
 
 // Maps
 let userMap, adminMap;
@@ -527,36 +657,184 @@ function fetchUserGPS() {
 //  RENDER FUNCTIONS
 // ============================================================
 function renderScore() {
-  const s = data.safetyScore || 0;
+  const s = typeof data.safetyScore === 'number' ? data.safetyScore : 100;
   const circle = document.getElementById('score-circle');
   const num = document.getElementById('score-number');
+  const badgeLabel = document.getElementById('score-badge-label');
   const bar = document.getElementById('score-bar');
   const label = document.getElementById('score-label');
-  const slider = document.getElementById('admin-score-input');
-  const sliderVal = document.getElementById('admin-score-val');
 
   num.textContent = s;
   bar.style.width = s + '%';
-  slider.value = s;
-  sliderVal.textContent = s + '%';
 
-  let color, barColor, labelText;
+  // Threat count badges in User Banner
+  const totalThreats = data.totalThreats || 0;
+  const totalCrit = data.totalCritical || 0;
+  const totalMod = data.totalModerate || 0;
+
+  document.getElementById('total-threats-badge').innerHTML = `<span>⚡ ${totalThreats} Active Threat${totalThreats === 1 ? '' : 's'}</span>`;
+  document.getElementById('threats-crit-badge').textContent = `${totalCrit} Critical (-${totalCrit * 15}%)`;
+  document.getElementById('threats-mod-badge').textContent = `${totalMod} Moderate (-${totalMod * 7}%)`;
+
+  let color, barColor, badgeBg, labelText, statusText;
   if (s >= 70) {
-    color = 'border-emerald-500 text-emerald-400';
+    color = 'border-emerald-500 text-emerald-400 shadow-emerald-500/20';
     barColor = 'bg-gradient-to-r from-emerald-500 to-green-400';
-    labelText = `${s}% Safe — Safe zone. Traffic flow and surveillance conditions are normal.`;
+    badgeBg = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    statusText = 'SAFE ZONE';
+    labelText = `${s}% Automated Safety Rating — Commuters can travel with confidence. Active incidents remain low.`;
   } else if (s >= 40) {
-    color = 'border-amber-500 text-amber-400';
+    color = 'border-amber-500 text-amber-400 shadow-amber-500/20';
     barColor = 'bg-gradient-to-r from-amber-500 to-yellow-400';
-    labelText = `${s}% Safe — Moderate risk. Commuters are advised to stay attentive.`;
+    badgeBg = 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    statusText = 'MODERATE RISK';
+    labelText = `${s}% Automated Safety Rating — Multiple active threats recorded. Exercise heightened awareness.`;
   } else {
-    color = 'border-red-500 text-red-400';
+    color = 'border-red-500 text-red-400 shadow-red-500/30';
     barColor = 'bg-gradient-to-r from-red-600 to-red-400';
-    labelText = `${s}% Safe — HIGH DANGER red-zone. Exercise extreme caution & avoid unlit lanes.`;
+    badgeBg = 'bg-red-500/20 text-red-300 border border-red-500/30';
+    statusText = 'HIGH DANGER RED-ZONE';
+    labelText = `${s}% Automated Safety Rating — Critical threat concentration detected! Avoid unlit areas & high-risk corridors.`;
   }
-  circle.className = `flex-shrink-0 w-28 h-28 rounded-full border-4 flex items-center justify-center text-3xl font-black ${color}`;
+
+  circle.className = `flex-shrink-0 w-32 h-32 rounded-full border-4 flex flex-col items-center justify-center transition-colors relative shadow-2xl ${color}`;
+  badgeLabel.className = `text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full mt-0.5 ${badgeBg}`;
+  badgeLabel.textContent = statusText;
   bar.className = `progress-fill h-full rounded-full ${barColor}`;
   label.textContent = labelText;
+
+  // Admin Dashboard stats
+  document.getElementById('admin-overall-score-display').textContent = `${s}%`;
+  const adminBadge = document.getElementById('admin-overall-status-badge');
+  adminBadge.className = `text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block ${badgeBg}`;
+  adminBadge.textContent = statusText;
+  document.getElementById('admin-threats-count').textContent = totalThreats;
+  document.getElementById('admin-crit-count').textContent = totalCrit;
+  document.getElementById('admin-mod-count').textContent = totalMod;
+}
+
+function renderAreaBreakdown() {
+  const grid = document.getElementById('area-safety-grid');
+  const adminTbody = document.getElementById('admin-area-score-tbody');
+  const areas = data.areaScores || [];
+
+  if (areas.length === 0) {
+    grid.innerHTML = '<p class="text-xs text-slate-500 col-span-full py-4 text-center">No area stats available.</p>';
+    adminTbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">No area data available.</td></tr>';
+    return;
+  }
+
+  // Render User Area Cards
+  grid.innerHTML = areas.map((a) => {
+    const s = a.score;
+    let badgeClass, barGradient, scoreTextColor, borderAccent;
+
+    if (s >= 70) {
+      badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+      barGradient = 'from-emerald-500 to-green-400';
+      scoreTextColor = 'text-emerald-400';
+      borderAccent = 'border-slate-700/70 hover:border-emerald-500/50';
+    } else if (s >= 40) {
+      badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      barGradient = 'from-amber-500 to-yellow-400';
+      scoreTextColor = 'text-amber-400';
+      borderAccent = 'border-amber-800/40 hover:border-amber-500/60';
+    } else {
+      badgeClass = 'bg-red-500/20 text-red-300 border-red-500/30';
+      barGradient = 'from-red-600 to-red-400';
+      scoreTextColor = 'text-red-400';
+      borderAccent = 'border-red-800/60 hover:border-red-500/70 bg-red-950/10';
+    }
+
+    return `
+      <div class="area-card rounded-2xl border ${borderAccent} bg-slate-800/70 p-5 space-y-3.5 backdrop-blur-md shadow-lg shadow-black/20">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h3 class="font-extrabold text-base text-white tracking-tight">${esc(a.areaName)}</h3>
+            <span class="text-[11px] font-semibold text-slate-400">Dhaka Region</span>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeClass}">
+            ${a.status}
+          </span>
+        </div>
+
+        <div class="flex items-baseline justify-between">
+          <div class="flex items-baseline gap-1">
+            <span class="text-3xl font-black ${scoreTextColor}">${s}</span>
+            <span class="text-xs font-bold text-slate-400">% Safe</span>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-bold ${a.totalThreats > 0 ? 'text-cyan-300' : 'text-slate-500'}">
+              ${a.totalThreats} Active Threat${a.totalThreats === 1 ? '' : 's'}
+            </span>
+          </div>
+        </div>
+
+        <div class="w-full h-2 rounded-full bg-slate-700/80 overflow-hidden">
+          <div class="progress-fill h-full rounded-full bg-gradient-to-r ${barGradient}" style="width:${s}%"></div>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] pt-1 text-slate-400 border-t border-slate-700/40">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-red-400">🔴 ${a.criticalCount} Crit</span>
+            <span>•</span>
+            <span class="font-semibold text-amber-400">🟡 ${a.moderateCount} Mod</span>
+          </div>
+          <button onclick="focusAreaOnMap('${esc(a.areaName)}')" class="btn-press font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+            <span>🗺️ Focus</span>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Render Admin Area Table Rows
+  adminTbody.innerHTML = areas.map((a) => {
+    const s = a.score;
+    let badgeClass;
+    if (s >= 70) badgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+    else if (s >= 40) badgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    else badgeClass = 'bg-red-500/20 text-red-300 border-red-500/30';
+
+    return `
+      <tr class="hover:bg-slate-800/40 transition-colors">
+        <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
+          <span>${esc(a.areaName)}</span>
+        </td>
+        <td class="py-3 px-4 font-mono font-bold ${a.totalThreats > 0 ? 'text-cyan-400' : 'text-slate-500'}">
+          ${a.totalThreats}
+        </td>
+        <td class="py-3 px-4 font-mono text-red-400">
+          ${a.criticalCount} (${a.criticalCount * 15}%)
+        </td>
+        <td class="py-3 px-4 font-mono text-amber-400">
+          ${a.moderateCount} (${a.moderateCount * 7}%)
+        </td>
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-2">
+            <div class="w-16 h-2 rounded-full bg-slate-700 overflow-hidden">
+              <div class="h-full rounded-full ${s >= 70 ? 'bg-emerald-500' : s >= 40 ? 'bg-amber-500' : 'bg-red-500'}" style="width:${s}%"></div>
+            </div>
+            <span class="font-mono font-bold">${s}%</span>
+          </div>
+        </td>
+        <td class="py-3 px-4">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}">
+            ${a.status}
+          </span>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function focusAreaOnMap(areaName) {
+  const coords = AREA_COORDINATES[areaName];
+  if (coords && userMap) {
+    userMap.setView(coords, 14);
+    window.scrollTo({ top: document.getElementById('user-map').offsetTop - 80, behavior: 'smooth' });
+    showToast(`🗺️ Map focused on ${areaName}`, 'emerald');
+  } else {
+    showToast(`📍 Coordinates for ${areaName} not specifically mapped`, 'amber');
+  }
 }
 
 function renderRoadsOnMap(map, layers) {
@@ -589,7 +867,7 @@ function renderIncidentPins(map, markerList) {
 
   (data.incidents || []).forEach(inc => {
     if (inc.coordinates && Array.isArray(inc.coordinates) && inc.coordinates.length === 2) {
-      const isCrit = inc.severity === 'Critical';
+      const isCrit = (inc.severity || '').toLowerCase() === 'critical';
       const bgColor = isCrit ? '#ef4444' : '#f59e0b';
       const iconHtml = `<div class="incident-pin-bubble" style="background:${bgColor};width:28px;height:28px;color:#fff;">⚠️</div>`;
       const customIcon = L.divIcon({
@@ -618,7 +896,7 @@ function renderIncidentsFeed() {
   const countBadge = document.getElementById('incidents-count-badge');
   const incidents = data.incidents || [];
 
-  countBadge.textContent = `${incidents.length} Report${incidents.length === 1 ? '' : 's'}`;
+  countBadge.textContent = `${incidents.length} Active Threat${incidents.length === 1 ? '' : 's'}`;
 
   if (incidents.length === 0) {
     feed.innerHTML = '';
@@ -627,7 +905,7 @@ function renderIncidentsFeed() {
   }
   noMsg.classList.add('hidden');
   feed.innerHTML = incidents.map(inc => {
-    const isCrit = inc.severity === 'Critical';
+    const isCrit = (inc.severity || '').toLowerCase() === 'critical';
     const hasCoords = inc.coordinates && Array.isArray(inc.coordinates) && inc.coordinates.length === 2;
     const isCrowdsourced = inc.description && (inc.description.includes('Reported by:') || inc.description.includes('Crowdsourced'));
 
@@ -695,11 +973,11 @@ function renderAdminIncidentList() {
     return;
   }
   list.innerHTML = incidents.map(inc => {
-    const sev = inc.severity === 'Critical';
+    const isCrit = (inc.severity || '').toLowerCase() === 'critical';
     return `
       <div class="flex items-center justify-between px-4 py-2.5 rounded-lg bg-slate-700/50 border border-slate-600/40">
         <div class="flex items-center gap-3">
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sev ? 'bg-red-600 text-white' : 'bg-amber-500 text-slate-900'}">${inc.severity}</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isCrit ? 'bg-red-600 text-white' : 'bg-amber-500 text-slate-900'}">${inc.severity}</span>
           <span class="text-sm font-medium">${esc(inc.title)}</span>
           <span class="text-xs text-slate-500">${inc.date}</span>
         </div>
@@ -732,7 +1010,7 @@ function renderAdminPendingReportsList() {
   }
 
   list.innerHTML = reports.map(r => {
-    const isCrit = r.severity === 'Critical';
+    const isCrit = (r.severity || '').toLowerCase() === 'critical';
     const dateFormatted = r.timestamp ? new Date(r.timestamp).toLocaleString() : 'Just now';
     const hasCoords = r.lat !== null && r.lng !== null && !isNaN(r.lat) && !isNaN(r.lng);
 
@@ -767,6 +1045,7 @@ function renderAdminPendingReportsList() {
 
 function renderAll() {
   renderScore();
+  renderAreaBreakdown();
   renderRoadsOnMap(userMap, userRoadLayers);
   renderRoadsOnMap(adminMap, adminRoadLayers);
   renderIncidentPins(userMap, userIncidentMarkers);
@@ -830,19 +1109,13 @@ function submitUserReport() {
 // ============================================================
 function approveReport(id) {
   socket.emit('approve-user-report', id);
-  showToast('✅ Report approved and promoted to map & feed!', 'emerald');
+  showToast('✅ Report approved! Safety score recalculated live.', 'emerald');
 }
 
 function rejectReport(id) {
   if (!confirm('Reject and delete this user report?')) return;
   socket.emit('reject-user-report', id);
   showToast('🗑 User report rejected & deleted', 'amber');
-}
-
-function submitScore() {
-  const val = document.getElementById('admin-score-input').value;
-  socket.emit('update-safety-score', val);
-  showToast('✅ Safety score updated to ' + val + '%', 'emerald');
 }
 
 // Drawing
@@ -931,27 +1204,29 @@ function addIncident() {
   document.getElementById('inc-area').value = '';
   document.getElementById('inc-date').value = '';
   document.getElementById('inc-desc').value = '';
-  showToast('✅ Incident report submitted', 'emerald');
+  showToast('✅ Incident report submitted! Score recalculated live.', 'emerald');
 }
 
 function deleteIncident(id) {
   if (!confirm('Delete this incident report?')) return;
   socket.emit('delete-incident', id);
-  showToast('🗑 Incident deleted', 'amber');
+  showToast('🗑 Incident deleted! Score recalculated live.', 'amber');
 }
 
 // ============================================================
 //  SOCKET EVENTS
 // ============================================================
 socket.on('init-safety-data', (d) => {
-  data = d || { safetyScore: 50, unsafeRoads: [], incidents: [], userReports: [] };
+  data = d || {};
   if (!data.userReports) data.userReports = [];
+  if (!data.areaScores) data.areaScores = [];
   renderAll();
 });
 
 socket.on('safety-data-updated', (d) => {
-  data = d || { safetyScore: 50, unsafeRoads: [], incidents: [], userReports: [] };
+  data = d || {};
   if (!data.userReports) data.userReports = [];
+  if (!data.areaScores) data.areaScores = [];
   renderAll();
 });
 

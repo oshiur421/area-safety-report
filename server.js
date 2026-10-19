@@ -12,20 +12,138 @@ const io = new Server(server, {
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// Pre-defined key areas of Dhaka for consistent reporting & tracking
+const KNOWN_AREAS = [
+  'Dhanmondi',
+  'Mirpur',
+  'Sadarghat',
+  'Uttara',
+  'Farmgate',
+  'Gulshan',
+  'Banani',
+  'Mohakhali',
+  'Motijheel',
+  'Mohammadpur',
+  'Shahbagh'
+];
+
+function extractArea(locationStr) {
+  if (!locationStr || typeof locationStr !== 'string') return 'General Dhaka';
+  const clean = locationStr.trim();
+  for (const area of KNOWN_AREAS) {
+    const reg = new RegExp('\\b' + area + '\\b', 'i');
+    if (reg.test(clean)) {
+      return area;
+    }
+  }
+  // Fallback to substring extraction before or after comma
+  const parts = clean.split(/[,–-]/);
+  if (parts.length > 1) {
+    const candidate = parts[parts.length - 1].trim();
+    if (candidate.length > 2 && candidate.length < 30) return candidate;
+  }
+  return clean.length > 25 ? clean.slice(0, 25) + '…' : clean;
+}
+
+function calculateSafetyScores(data) {
+  const incidents = Array.isArray(data.incidents) ? data.incidents : [];
+
+  let totalCritical = 0;
+  let totalModerate = 0;
+
+  // Initialize known areas so they are always represented in dashboard
+  const areaGroups = {};
+  KNOWN_AREAS.slice(0, 6).forEach((area) => {
+    areaGroups[area] = {
+      areaName: area,
+      criticalCount: 0,
+      moderateCount: 0,
+      totalThreats: 0,
+      score: 100
+    };
+  });
+
+  incidents.forEach((inc) => {
+    const isCritical = (inc.severity || '').toLowerCase() === 'critical';
+    if (isCritical) {
+      totalCritical++;
+    } else {
+      totalModerate++;
+    }
+
+    const area = extractArea(inc.areaName || inc.location || inc.title);
+    if (!areaGroups[area]) {
+      areaGroups[area] = {
+        areaName: area,
+        criticalCount: 0,
+        moderateCount: 0,
+        totalThreats: 0,
+        score: 100
+      };
+    }
+
+    areaGroups[area].totalThreats++;
+    if (isCritical) {
+      areaGroups[area].criticalCount++;
+    } else {
+      areaGroups[area].moderateCount++;
+    }
+  });
+
+  // Calculate scores per area: 100% - (15% * critical) - (7% * moderate)
+  const areaBreakdown = Object.values(areaGroups).map((item) => {
+    const rawScore = 100 - (item.criticalCount * 15) - (item.moderateCount * 7);
+    const score = Math.max(0, Math.min(100, rawScore));
+    let status = 'Safe';
+    if (score < 40) status = 'High Danger';
+    else if (score < 70) status = 'Moderate Risk';
+
+    return {
+      areaName: item.areaName,
+      totalThreats: item.totalThreats,
+      criticalCount: item.criticalCount,
+      moderateCount: item.moderateCount,
+      score: score,
+      status: status
+    };
+  });
+
+  // Sort: areas with active threats first, then by lowest score (highest danger)
+  areaBreakdown.sort((a, b) => b.totalThreats - a.totalThreats || a.score - b.score);
+
+  // Overall city score calculation
+  const overallRaw = 100 - (totalCritical * 15) - (totalModerate * 7);
+  const overallScore = Math.max(0, Math.min(100, overallRaw));
+
+  return {
+    safetyScore: overallScore,
+    totalThreats: incidents.length,
+    totalCritical: totalCritical,
+    totalModerate: totalModerate,
+    areaScores: areaBreakdown
+  };
+}
+
 // --- Data Layer ---
 function loadData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return {
-      safetyScore: typeof parsed.safetyScore === 'number' ? parsed.safetyScore : 50,
+    const loaded = {
+      safetyScore: 100,
       unsafeRoads: Array.isArray(parsed.unsafeRoads) ? parsed.unsafeRoads : [],
       incidents: Array.isArray(parsed.incidents) ? parsed.incidents : [],
       userReports: Array.isArray(parsed.userReports) ? parsed.userReports : []
     };
+    const stats = calculateSafetyScores(loaded);
+    Object.assign(loaded, stats);
+    return loaded;
   } catch (err) {
     console.error('Error loading data.json, using defaults:', err.message);
-    return { safetyScore: 50, unsafeRoads: [], incidents: [], userReports: [] };
+    const defaults = { safetyScore: 100, unsafeRoads: [], incidents: [], userReports: [] };
+    const stats = calculateSafetyScores(defaults);
+    Object.assign(defaults, stats);
+    return defaults;
   }
 }
 
@@ -34,6 +152,20 @@ function saveData(data) {
 }
 
 let safetyData = loadData();
+
+function refreshAndSaveSafetyScores() {
+  const stats = calculateSafetyScores(safetyData);
+  safetyData.safetyScore = stats.safetyScore;
+  safetyData.totalThreats = stats.totalThreats;
+  safetyData.totalCritical = stats.totalCritical;
+  safetyData.totalModerate = stats.totalModerate;
+  safetyData.areaScores = stats.areaScores;
+  saveData(safetyData);
+  console.log(`Auto-calculated Safety Score: ${safetyData.safetyScore}% across ${safetyData.totalThreats} active threats (${safetyData.totalCritical} critical, ${safetyData.totalModerate} moderate)`);
+}
+
+// Ensure initial save has fresh auto-calculated values
+refreshAndSaveSafetyScores();
 
 // --- Express ---
 app.use(express.static(path.join(__dirname, 'public')));
@@ -44,15 +176,6 @@ io.on('connection', (socket) => {
 
   // Send full state to newly connected client
   socket.emit('init-safety-data', safetyData);
-
-  // Admin: update safety score
-  socket.on('update-safety-score', (score) => {
-    const parsed = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
-    safetyData.safetyScore = parsed;
-    saveData(safetyData);
-    io.emit('safety-data-updated', safetyData);
-    console.log(`Safety score updated to ${parsed}%`);
-  });
 
   // Admin: add unsafe road
   socket.on('add-unsafe-road', (road) => {
@@ -78,7 +201,7 @@ io.on('connection', (socket) => {
     console.log(`Unsafe road deleted: ${id}`);
   });
 
-  // Admin: add incident
+  // Admin: add incident (auto-recalculates score)
   socket.on('add-incident', (incident) => {
     if (!incident || !incident.id || !incident.title) {
       return socket.emit('error-msg', 'Invalid incident data.');
@@ -92,15 +215,15 @@ io.on('connection', (socket) => {
       description: incident.description || '',
       coordinates: incident.coordinates || null
     });
-    saveData(safetyData);
+    refreshAndSaveSafetyScores();
     io.emit('safety-data-updated', safetyData);
     console.log(`Incident added: ${incident.title}`);
   });
 
-  // Admin: delete incident
+  // Admin: delete incident (auto-recalculates score)
   socket.on('delete-incident', (id) => {
     safetyData.incidents = safetyData.incidents.filter((i) => i.id !== id);
-    saveData(safetyData);
+    refreshAndSaveSafetyScores();
     io.emit('safety-data-updated', safetyData);
     console.log(`Incident deleted: ${id}`);
   });
@@ -141,7 +264,7 @@ io.on('connection', (socket) => {
     console.log(`New crowdsourced report submitted: [${newReport.issueType}] ${newReport.location} by ${newReport.reporterName}`);
   });
 
-  // Admin: approve user report and promote to official incidents / map
+  // Admin: approve user report and promote to official incidents / map (auto-recalculates score)
   socket.on('approve-user-report', (targetId) => {
     const id = typeof targetId === 'object' && targetId !== null ? targetId.id : targetId;
     if (!Array.isArray(safetyData.userReports)) safetyData.userReports = [];
@@ -166,7 +289,7 @@ io.on('connection', (socket) => {
     };
 
     safetyData.incidents.unshift(approvedIncident);
-    saveData(safetyData);
+    refreshAndSaveSafetyScores();
 
     io.emit('safety-data-updated', safetyData);
     console.log(`Crowdsourced report ${id} approved and added as incident ${incidentId}`);

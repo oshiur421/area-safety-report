@@ -6,10 +6,22 @@
       "roadName": "Mirpur Road (Dhanmondi Segment)",
       "riskLevel": "High Danger",
       "coordinates": [
-        [23.7465, 90.3715],
-        [23.7490, 90.3732],
-        [23.7520, 90.3748],
-        [23.7555, 90.3760]
+        [
+          23.7465,
+          90.3715
+        ],
+        [
+          23.749,
+          90.3732
+        ],
+        [
+          23.752,
+          90.3748
+        ],
+        [
+          23.7555,
+          90.376
+        ]
       ]
     },
     {
@@ -17,14 +29,39 @@
       "roadName": "Sadarghat Waterfront Lane",
       "riskLevel": "Moderate Risk",
       "coordinates": [
-        [23.7080, 90.4070],
-        [23.7065, 90.4095],
-        [23.7050, 90.4120],
-        [23.7038, 90.4148]
+        [
+          23.708,
+          90.407
+        ],
+        [
+          23.7065,
+          90.4095
+        ],
+        [
+          23.705,
+          90.412
+        ],
+        [
+          23.7038,
+          90.4148
+        ]
       ]
     }
   ],
   "incidents": [
+    {
+      "id": "inc-1792399823902",
+      "title": "[Snatching / ছিনতাই] Dhanmondi 27 Junction",
+      "areaName": "Dhanmondi 27 Junction",
+      "date": "2026-10-19",
+      "severity": "Critical",
+      "description": "Automated test report: bag snatching incident on walkway. (Reported by: Test Commuter)",
+      "coordinates": [
+        23.754,
+        90.3755
+      ],
+      "issueType": "Snatching / ছিনতাই"
+    },
     {
       "id": "inc-001",
       "title": "Multi-Vehicle Collision on Mirpur Road",
@@ -40,6 +77,32 @@
       "date": "2026-10-02",
       "severity": "Warning",
       "description": "A pedestrian was struck by a speeding vehicle near the Sadarghat ferry terminal area late at night. The victim sustained moderate injuries. Witnesses reported the area has minimal street lighting and no pedestrian crossings, making it a recurring danger zone for foot traffic."
+    }
+  ],
+  "userReports": [
+    {
+      "id": "rep-001",
+      "reporterName": "Tanvir Hasan",
+      "location": "Mirpur 10 Crossing",
+      "issueType": "Snatching / ছিনতাই",
+      "lat": 23.8069,
+      "lng": 90.3687,
+      "severity": "Critical",
+      "description": "Two motorbike riders snatched a handbag near the roundabout around 9:30 PM. Poor lighting on the sidewalk made it hard to identify them.",
+      "timestamp": "2026-10-19T10:30:00.000Z",
+      "status": "pending"
+    },
+    {
+      "id": "rep-002",
+      "reporterName": "Anonymous",
+      "location": "Farmgate Foot Overbridge Area",
+      "issueType": "Bad Lighting / অন্ধকার রাস্তা",
+      "lat": 23.757,
+      "lng": 90.3892,
+      "severity": "Moderate",
+      "description": "Streetlights are completely dead under the bridge for the past 2 weeks. Pedestrians feel very insecure crossing at night.",
+      "timestamp": "2026-10-19T11:45:00.000Z",
+      "status": "pending"
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "safetyScore": 42,
+  "unsafeRoads": [
+    {
+      "id": "road-001",
+      "roadName": "Mirpur Road (Dhanmondi Segment)",
+      "riskLevel": "High Danger",
+      "coordinates": [
+        [23.7465, 90.3715],
+        [23.7490, 90.3732],
+        [23.7520, 90.3748],
+        [23.7555, 90.3760]
+      ]
+    },
+    {
+      "id": "road-002",
+      "roadName": "Sadarghat Waterfront Lane",
+      "riskLevel": "Moderate Risk",
+      "coordinates": [
+        [23.7080, 90.4070],
+        [23.7065, 90.4095],
+        [23.7050, 90.4120],
+        [23.7038, 90.4148]
+      ]
+    }
+  ],
+  "incidents": [
+    {
+      "id": "inc-001",
+      "title": "Multi-Vehicle Collision on Mirpur Road",
+      "areaName": "Mirpur Road, Dhanmondi",
+      "date": "2026-09-15",
+      "severity": "Critical",
+      "description": "A severe multi-vehicle pile-up occurred during evening rush hour near the Dhanmondi 27 intersection. Three buses and multiple rickshaws were involved, causing significant injuries to 12 commuters and blocking traffic for over 4 hours. Poor road lighting and absence of lane markings were cited as contributing factors."
+    },
+    {
+      "id": "inc-002",
+      "title": "Pedestrian Hit-and-Run near Sadarghat",
+      "areaName": "Sadarghat Waterfront Lane",
+      "date": "2026-10-02",
+      "severity": "Warning",
+      "description": "A pedestrian was struck by a speeding vehicle near the Sadarghat ferry terminal area late at night. The victim sustained moderate injuries. Witnesses reported the area has minimal street lighting and no pedestrian crossings, making it a recurring danger zone for foot traffic."
+    }
+  ]
+}

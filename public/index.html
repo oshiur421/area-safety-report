@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAFEZONE — Area Safety Report</title>
+  <meta name="description" content="Real-time area safety report and red-zone road marking system for Dhaka." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; overflow-x: hidden; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+    /* Leaflet map */
+    #user-map, #admin-map { height: 480px; border-radius: 12px; border: 1px solid #334155; }
+
+    /* Glowing red line on map */
+    .leaflet-interactive.red-glow { filter: drop-shadow(0 0 6px #ef4444) drop-shadow(0 0 12px #ef444488); }
+
+    /* Progress bar animation */
+    .progress-fill { transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1), background 0.5s ease; }
+
+    /* Pulse dot */
+    @keyframes pulse-dot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+    /* Card hover */
+    .incident-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+    .incident-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+
+    /* Button press */
+    .btn-press { transition: transform 0.1s; }
+    .btn-press:active { transform: scale(0.96); }
+
+    /* Tab indicator */
+    .tab-active { background: linear-gradient(135deg, #ef4444, #f97316); color: #fff; box-shadow: 0 4px 20px rgba(239,68,68,0.35); }
+    .tab-inactive { background: #1e293b; color: #94a3b8; }
+    .tab-inactive:hover { background: #334155; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+
+<!-- ============ NAVBAR ============ -->
+<nav class="sticky top-0 z-[9999] backdrop-blur-xl bg-slate-900/80 border-b border-slate-700/60">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75h.007v.008H12v-.008z"/></svg>
+      </div>
+      <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">SAFEZONE AREA REPORT</h1>
+    </div>
+    <div class="flex gap-2">
+      <button id="btn-user-view" onclick="switchView('user')" class="tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press">📊 User Report View</button>
+      <button id="btn-admin-view" onclick="switchView('admin')" class="tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press">🔒 Admin Panel</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ USER VIEW ============ -->
+<main id="user-view" class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+  <!-- Safety Score Banner -->
+  <section id="score-banner" class="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-800 to-slate-900 p-6 sm:p-8">
+    <div class="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-red-500/10 blur-3xl pointer-events-none"></div>
+    <div class="flex flex-col sm:flex-row sm:items-center gap-6">
+      <div class="flex-shrink-0 w-28 h-28 rounded-full border-4 flex items-center justify-center text-3xl font-black" id="score-circle">
+        <span id="score-number">--</span><span class="text-lg">%</span>
+      </div>
+      <div class="flex-1 space-y-3">
+        <h2 class="text-2xl font-bold">Area Safety Score</h2>
+        <p class="text-slate-400 text-sm" id="score-label">Calculating…</p>
+        <div class="w-full h-4 rounded-full bg-slate-700 overflow-hidden">
+          <div id="score-bar" class="progress-fill h-full rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Map -->
+  <section class="space-y-3">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse-dot inline-block"></span>
+      <h2 class="text-xl font-bold">Live Red-Zone Map</h2>
+      <span class="text-xs text-slate-500 ml-2">Dhaka, Bangladesh</span>
+    </div>
+    <div id="user-map"></div>
+    <p class="text-xs text-slate-500">Red lines indicate admin-marked unsafe roads. Click a line for details.</p>
+  </section>
+
+  <!-- Past Incidents Feed -->
+  <section class="space-y-4">
+    <h2 class="text-xl font-bold flex items-center gap-2">
+      <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Past Incident Reports
+    </h2>
+    <div id="incidents-feed" class="grid gap-4 sm:grid-cols-2"></div>
+    <p id="no-incidents" class="hidden text-slate-500 text-sm text-center py-8">No incidents reported yet.</p>
+  </section>
+</main>
+
+<!-- ============ ADMIN VIEW ============ -->
+<main id="admin-view" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+  <!-- Safety Score Controller -->
+  <section class="rounded-2xl border border-slate-700/60 bg-slate-800/60 p-6 space-y-4">
+    <h2 class="text-lg font-bold flex items-center gap-2">⚙️ Safety Score Controller</h2>
+    <div class="flex flex-wrap items-end gap-4">
+      <div class="flex-1 min-w-[200px] space-y-2">
+        <label class="text-sm text-slate-400">Area Safety Percentage (0–100%)</label>
+        <input id="admin-score-input" type="range" min="0" max="100" value="50" class="w-full accent-red-500 cursor-pointer" oninput="document.getElementById('admin-score-val').textContent=this.value+'%'" />
+        <span id="admin-score-val" class="text-2xl font-black text-white">50%</span>
+      </div>
+      <button onclick="submitScore()" class="btn-press px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">Update Score</button>
+    </div>
+  </section>
+
+  <!-- Road Drawing Tool -->
+  <section class="rounded-2xl border border-slate-700/60 bg-slate-800/60 p-6 space-y-4">
+    <h2 class="text-lg font-bold flex items-center gap-2">🗺️ Mark Unsafe Road on Map</h2>
+    <div id="admin-map"></div>
+    <div class="flex flex-wrap gap-3 items-end">
+      <div class="flex-1 min-w-[180px]">
+        <label class="text-xs text-slate-400">Road / Area Name</label>
+        <input id="road-name" type="text" placeholder="e.g. Gulshan Avenue" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+      </div>
+      <div class="min-w-[180px]">
+        <label class="text-xs text-slate-400">Risk Level</label>
+        <select id="road-risk" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+          <option value="High Danger">🔴 High Danger</option>
+          <option value="Moderate Risk">🟡 Moderate Risk</option>
+        </select>
+      </div>
+      <button id="btn-start-draw" onclick="toggleDraw()" class="btn-press px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm">✏️ Start Drawing</button>
+      <button onclick="clearDrawing()" class="btn-press px-5 py-2.5 rounded-xl bg-slate-600 hover:bg-slate-500 font-semibold text-sm">🗑 Clear Drawing</button>
+      <button onclick="saveRoad()" class="btn-press px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">💾 Save Red Line</button>
+    </div>
+    <p id="draw-status" class="text-xs text-slate-500">Click "Start Drawing" then click points on the map to trace a road.</p>
+
+    <!-- Existing roads list -->
+    <div class="mt-4 space-y-2">
+      <h3 class="text-sm font-semibold text-slate-300">Existing Marked Roads</h3>
+      <div id="admin-road-list" class="space-y-2"></div>
+    </div>
+  </section>
+
+  <!-- Add Incident Form -->
+  <section class="rounded-2xl border border-slate-700/60 bg-slate-800/60 p-6 space-y-4">
+    <h2 class="text-lg font-bold flex items-center gap-2">📝 Add Past Incident Report</h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs text-slate-400">Incident Title</label>
+        <input id="inc-title" type="text" placeholder="e.g. Bus Collision on Airport Road" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Road / Area Name</label>
+        <input id="inc-area" type="text" placeholder="e.g. Airport Road, Uttara" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Date of Incident</label>
+        <input id="inc-date" type="date" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"/>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Severity</label>
+        <select id="inc-severity" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+          <option value="Critical">🔴 Critical</option>
+          <option value="Warning">🟡 Warning</option>
+        </select>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs text-slate-400">Detailed Description</label>
+        <textarea id="inc-desc" rows="3" placeholder="Describe what happened in detail…" class="w-full mt-1 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+      </div>
+    </div>
+    <button onclick="addIncident()" class="btn-press px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 font-semibold text-sm shadow-lg shadow-red-900/30">Submit Incident Report</button>
+
+    <!-- Existing incidents list -->
+    <div class="mt-4 space-y-2">
+      <h3 class="text-sm font-semibold text-slate-300">Existing Incident Reports</h3>
+      <div id="admin-incident-list" class="space-y-2"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ TOAST ============ -->
+<div id="toast" class="fixed bottom-6 right-6 z-[99999] hidden">
+  <div class="px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold flex items-center gap-2 bg-slate-800 border border-slate-600"></div>
+</div>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+const socket = io();
+let currentView = 'user';
+let isAdmin = false;
+let data = { safetyScore: 0, unsafeRoads: [], incidents: [] };
+
+// Maps
+let userMap, adminMap;
+let userRoadLayers = [];
+let adminRoadLayers = [];
+
+// Drawing state
+let isDrawing = false;
+let drawPoints = [];
+let drawPolyline = null;
+let drawMarkers = [];
+
+// ============================================================
+//  VIEW TOGGLE
+// ============================================================
+function switchView(view) {
+  if (view === 'admin' && !isAdmin) {
+    const pw = prompt('Enter admin password:');
+    if (pw !== 'admin123') { showToast('❌ Wrong password', 'red'); return; }
+    isAdmin = true;
+    showToast('✅ Admin access granted', 'emerald');
+  }
+  currentView = view;
+  document.getElementById('user-view').classList.toggle('hidden', view !== 'user');
+  document.getElementById('admin-view').classList.toggle('hidden', view !== 'admin');
+  document.getElementById('btn-user-view').className = view === 'user'
+    ? 'tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press'
+    : 'tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press';
+  document.getElementById('btn-admin-view').className = view === 'admin'
+    ? 'tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press'
+    : 'tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press';
+
+  // Invalidate map size after toggle
+  setTimeout(() => {
+    if (view === 'user' && userMap) userMap.invalidateSize();
+    if (view === 'admin' && adminMap) adminMap.invalidateSize();
+  }, 100);
+}
+
+// ============================================================
+//  INIT MAPS
+// ============================================================
+function initMaps() {
+  const dhakaCenter = [23.7340, 90.3925];
+  const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const tileAttr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+  // User map
+  userMap = L.map('user-map', { zoomControl: true, scrollWheelZoom: true }).setView(dhakaCenter, 13);
+  L.tileLayer(tileUrl, { attribution: tileAttr, maxZoom: 19 }).addTo(userMap);
+
+  // Admin map
+  adminMap = L.map('admin-map', { zoomControl: true, scrollWheelZoom: true }).setView(dhakaCenter, 13);
+  L.tileLayer(tileUrl, { attribution: tileAttr, maxZoom: 19 }).addTo(adminMap);
+
+  // Admin map click for drawing
+  adminMap.on('click', onAdminMapClick);
+}
+
+// ============================================================
+//  RENDER FUNCTIONS
+// ============================================================
+function renderScore() {
+  const s = data.safetyScore;
+  const circle = document.getElementById('score-circle');
+  const num = document.getElementById('score-number');
+  const bar = document.getElementById('score-bar');
+  const label = document.getElementById('score-label');
+  const slider = document.getElementById('admin-score-input');
+  const sliderVal = document.getElementById('admin-score-val');
+
+  num.textContent = s;
+  bar.style.width = s + '%';
+  slider.value = s;
+  sliderVal.textContent = s + '%';
+
+  let color, barColor, labelText;
+  if (s >= 70) {
+    color = 'border-emerald-500 text-emerald-400';
+    barColor = 'bg-gradient-to-r from-emerald-500 to-green-400';
+    labelText = `${s}% Safe — This area is relatively safe.`;
+  } else if (s >= 40) {
+    color = 'border-amber-500 text-amber-400';
+    barColor = 'bg-gradient-to-r from-amber-500 to-yellow-400';
+    labelText = `${s}% Safe — Moderate risk. Stay alert.`;
+  } else {
+    color = 'border-red-500 text-red-400';
+    barColor = 'bg-gradient-to-r from-red-600 to-red-400';
+    labelText = `${s}% Safe — HIGH DANGER zone. Exercise extreme caution.`;
+  }
+  circle.className = `flex-shrink-0 w-28 h-28 rounded-full border-4 flex items-center justify-center text-3xl font-black ${color}`;
+  bar.className = `progress-fill h-full rounded-full ${barColor}`;
+  label.textContent = labelText;
+}
+
+function renderRoadsOnMap(map, layers) {
+  layers.forEach(l => map.removeLayer(l));
+  layers.length = 0;
+  data.unsafeRoads.forEach(road => {
+    const color = road.riskLevel === 'High Danger' ? '#ef4444' : '#f59e0b';
+    const line = L.polyline(road.coordinates, {
+      color: color,
+      weight: 6,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round',
+      className: 'red-glow'
+    }).addTo(map);
+    line.bindPopup(`
+      <div style="font-family:Inter,sans-serif;min-width:180px">
+        <strong style="font-size:14px">${road.roadName}</strong><br/>
+        <span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;color:#fff;background:${road.riskLevel==='High Danger'?'#dc2626':'#d97706'}">${road.riskLevel}</span>
+      </div>
+    `);
+    layers.push(line);
+  });
+}
+
+function renderIncidentsFeed() {
+  const feed = document.getElementById('incidents-feed');
+  const noMsg = document.getElementById('no-incidents');
+  if (data.incidents.length === 0) {
+    feed.innerHTML = '';
+    noMsg.classList.remove('hidden');
+    return;
+  }
+  noMsg.classList.add('hidden');
+  feed.innerHTML = data.incidents.map(inc => {
+    const sev = inc.severity === 'Critical';
+    return `
+      <div class="incident-card rounded-xl border ${sev ? 'border-red-800/60 bg-red-950/30' : 'border-amber-800/60 bg-amber-950/20'} p-5 space-y-2">
+        <div class="flex items-start justify-between gap-2">
+          <h3 class="font-bold text-base leading-snug">${esc(inc.title)}</h3>
+          <span class="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${sev ? 'bg-red-600 text-white' : 'bg-amber-500 text-slate-900'}">${inc.severity}</span>
+        </div>
+        <p class="text-xs text-slate-400 flex items-center gap-3">
+          <span>📍 ${esc(inc.areaName)}</span>
+          <span>📅 ${inc.date}</span>
+        </p>
+        <p class="text-sm text-slate-300 leading-relaxed">${esc(inc.description)}</p>
+      </div>`;
+  }).join('');
+}
+
+function renderAdminRoadList() {
+  const list = document.getElementById('admin-road-list');
+  if (data.unsafeRoads.length === 0) {
+    list.innerHTML = '<p class="text-xs text-slate-500">No roads marked yet.</p>';
+    return;
+  }
+  list.innerHTML = data.unsafeRoads.map(r => {
+    const sev = r.riskLevel === 'High Danger';
+    return `
+      <div class="flex items-center justify-between px-4 py-2.5 rounded-lg bg-slate-700/50 border border-slate-600/40">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full ${sev ? 'bg-red-500' : 'bg-amber-500'}"></span>
+          <span class="text-sm font-medium">${esc(r.roadName)}</span>
+          <span class="text-xs text-slate-400">(${r.riskLevel})</span>
+        </div>
+        <button onclick="deleteRoad('${r.id}')" class="btn-press text-xs px-3 py-1 rounded-lg bg-red-900/60 hover:bg-red-800 text-red-300 font-semibold">Delete</button>
+      </div>`;
+  }).join('');
+}
+
+function renderAdminIncidentList() {
+  const list = document.getElementById('admin-incident-list');
+  if (data.incidents.length === 0) {
+    list.innerHTML = '<p class="text-xs text-slate-500">No incidents recorded yet.</p>';
+    return;
+  }
+  list.innerHTML = data.incidents.map(inc => {
+    const sev = inc.severity === 'Critical';
+    return `
+      <div class="flex items-center justify-between px-4 py-2.5 rounded-lg bg-slate-700/50 border border-slate-600/40">
+        <div class="flex items-center gap-3">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${sev ? 'bg-red-600 text-white' : 'bg-amber-500 text-slate-900'}">${inc.severity}</span>
+          <span class="text-sm font-medium">${esc(inc.title)}</span>
+          <span class="text-xs text-slate-500">${inc.date}</span>
+        </div>
+        <button onclick="deleteIncident('${inc.id}')" class="btn-press text-xs px-3 py-1 rounded-lg bg-red-900/60 hover:bg-red-800 text-red-300 font-semibold">Delete</button>
+      </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderScore();
+  renderRoadsOnMap(userMap, userRoadLayers);
+  renderRoadsOnMap(adminMap, adminRoadLayers);
+  renderIncidentsFeed();
+  renderAdminRoadList();
+  renderAdminIncidentList();
+}
+
+// ============================================================
+//  ADMIN ACTIONS
+// ============================================================
+function submitScore() {
+  const val = document.getElementById('admin-score-input').value;
+  socket.emit('update-safety-score', val);
+  showToast('✅ Safety score updated to ' + val + '%', 'emerald');
+}
+
+// Drawing
+function toggleDraw() {
+  isDrawing = !isDrawing;
+  const btn = document.getElementById('btn-start-draw');
+  const status = document.getElementById('draw-status');
+  if (isDrawing) {
+    btn.textContent = '⏸ Stop Drawing';
+    btn.classList.replace('bg-emerald-600', 'bg-amber-600');
+    btn.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+    status.textContent = 'Drawing mode ON — click points on the map to trace a road.';
+    status.classList.replace('text-slate-500', 'text-amber-400');
+    adminMap.getContainer().style.cursor = 'crosshair';
+  } else {
+    btn.textContent = '✏️ Start Drawing';
+    btn.classList.replace('bg-amber-600', 'bg-emerald-600');
+    btn.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+    status.textContent = 'Click "Start Drawing" then click points on the map to trace a road.';
+    status.classList.replace('text-amber-400', 'text-slate-500');
+    adminMap.getContainer().style.cursor = '';
+  }
+}
+
+function onAdminMapClick(e) {
+  if (!isDrawing) return;
+  const { lat, lng } = e.latlng;
+  drawPoints.push([lat, lng]);
+
+  // Marker
+  const marker = L.circleMarker([lat, lng], { radius: 5, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1 }).addTo(adminMap);
+  drawMarkers.push(marker);
+
+  // Polyline
+  if (drawPolyline) adminMap.removeLayer(drawPolyline);
+  if (drawPoints.length >= 2) {
+    drawPolyline = L.polyline(drawPoints, { color: '#ef4444', weight: 5, dashArray: '8 6', opacity: 0.8 }).addTo(adminMap);
+  }
+  document.getElementById('draw-status').textContent = `${drawPoints.length} point(s) placed. Keep clicking or save.`;
+}
+
+function clearDrawing() {
+  drawMarkers.forEach(m => adminMap.removeLayer(m));
+  if (drawPolyline) adminMap.removeLayer(drawPolyline);
+  drawPoints = [];
+  drawMarkers = [];
+  drawPolyline = null;
+  if (isDrawing) toggleDraw();
+  document.getElementById('draw-status').textContent = 'Drawing cleared.';
+}
+
+function saveRoad() {
+  if (drawPoints.length < 2) { showToast('❌ Draw at least 2 points on the map', 'red'); return; }
+  const name = document.getElementById('road-name').value.trim() || 'Unnamed Road';
+  const risk = document.getElementById('road-risk').value;
+  socket.emit('add-unsafe-road', {
+    id: 'road-' + Date.now(),
+    roadName: name,
+    riskLevel: risk,
+    coordinates: drawPoints
+  });
+  clearDrawing();
+  document.getElementById('road-name').value = '';
+  showToast('✅ Red-zone road saved', 'emerald');
+}
+
+function deleteRoad(id) {
+  if (!confirm('Delete this road marking?')) return;
+  socket.emit('delete-unsafe-road', id);
+  showToast('🗑 Road deleted', 'amber');
+}
+
+// Incidents
+function addIncident() {
+  const title = document.getElementById('inc-title').value.trim();
+  const area = document.getElementById('inc-area').value.trim();
+  const date = document.getElementById('inc-date').value;
+  const severity = document.getElementById('inc-severity').value;
+  const desc = document.getElementById('inc-desc').value.trim();
+  if (!title) { showToast('❌ Incident title is required', 'red'); return; }
+  socket.emit('add-incident', {
+    id: 'inc-' + Date.now(),
+    title, areaName: area, date: date || new Date().toISOString().slice(0,10), severity, description: desc
+  });
+  document.getElementById('inc-title').value = '';
+  document.getElementById('inc-area').value = '';
+  document.getElementById('inc-date').value = '';
+  document.getElementById('inc-desc').value = '';
+  showToast('✅ Incident report submitted', 'emerald');
+}
+
+function deleteIncident(id) {
+  if (!confirm('Delete this incident report?')) return;
+  socket.emit('delete-incident', id);
+  showToast('🗑 Incident deleted', 'amber');
+}
+
+// ============================================================
+//  SOCKET EVENTS
+// ============================================================
+socket.on('init-safety-data', (d) => { data = d; renderAll(); });
+socket.on('safety-data-updated', (d) => { data = d; renderAll(); });
+socket.on('error-msg', (msg) => showToast('❌ ' + msg, 'red'));
+
+// ============================================================
+//  UTILS
+// ============================================================
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function showToast(msg, color) {
+  const toast = document.getElementById('toast');
+  const inner = toast.firstElementChild;
+  const colors = { red: 'border-red-500 text-red-300', emerald: 'border-emerald-500 text-emerald-300', amber: 'border-amber-500 text-amber-300' };
+  inner.className = `px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold flex items-center gap-2 bg-slate-800 border ${colors[color] || 'border-slate-500 text-slate-300'}`;
+  inner.textContent = msg;
+  toast.classList.remove('hidden');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.add('hidden'), 3500);
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+document.addEventListener('DOMContentLoaded', initMaps);
+</script>
+</body>
+</html>

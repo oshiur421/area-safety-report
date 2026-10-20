@@ -170,6 +170,15 @@ refreshAndSaveSafetyScores();
 // --- Express ---
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Explicit routes for User View (/) and Admin Panel (/admin)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get(['/admin', '/admin/*'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // --- Socket.io ---
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);

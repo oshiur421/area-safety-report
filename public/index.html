@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -65,23 +65,52 @@
 <!-- ============ NAVBAR ============ -->
 <nav class="sticky top-0 z-[9999] backdrop-blur-xl bg-slate-900/85 border-b border-slate-700/60 shadow-lg shadow-black/20">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-red-500/25">
+    <a href="/" class="flex items-center gap-3 group">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-red-500/25 group-hover:scale-105 transition-transform duration-200">
         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75h.007v.008H12v-.008z"/></svg>
       </div>
       <div>
         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">SAFEZONE AREA REPORT</h1>
         <p class="text-[10px] text-slate-400 hidden sm:block tracking-wide">AUTOMATED THREAT-DRIVEN SAFETY INDEX &amp; RED-ZONE MARKING</p>
       </div>
+    </a>
+
+    <!-- User Navbar Action Group (Active on '/') -->
+    <div id="user-nav-actions" class="flex items-center gap-2 sm:gap-3">
+      <!-- Live indicator badge: 🟢 Live Threat Engine Active -->
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="hidden sm:inline">Live Threat Engine Active</span>
+        <span class="sm:hidden">Live Engine</span>
+      </div>
+
+      <!-- Quick scroll button: ➕ Report Unsafe Area -->
+      <a href="#user-report-form"
+        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 text-white text-xs font-bold transition-all duration-200 shadow-md shadow-red-950/50 btn-press">
+        <span>➕ Report Unsafe Area</span>
+      </a>
+
+      <!-- Link button to the live SOS tracker (🚨 Emergency SOS) -->
+      <a href="https://safeguard-live.onrender.com" target="_blank" rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 text-xs font-bold transition-all duration-200 shadow-sm">
+        <span>🚨 Emergency SOS</span>
+      </a>
     </div>
-    <div class="flex items-center gap-2">
-      <button id="btn-user-view" onclick="switchView('user')" class="tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2">
-        <span>📊 User Report View</span>
-      </button>
-      <button id="btn-admin-view" onclick="switchView('admin')" class="tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2">
-        <span>🔒 Admin Panel</span>
+
+    <!-- Admin Navbar Action Group (Active on '/admin') -->
+    <div id="admin-nav-actions" class="hidden items-center gap-2 sm:gap-3">
+      <!-- Badge: 🔒 Admin Moderation Mode with pending counter -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-950/70 border border-red-500/40 text-red-300 text-xs font-bold shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+        <span>🔒 Admin Moderation Mode</span>
         <span id="nav-pending-badge" class="hidden px-2 py-0.5 text-[10px] font-black rounded-full bg-red-500 text-white shadow-sm animate-pulse">0</span>
-      </button>
+      </div>
+
+      <!-- Link: ← Public Safety Feed pointing to / -->
+      <a href="/"
+        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 text-xs font-semibold transition-all duration-200 shadow-sm">
+        <span>← Public Safety Feed</span>
+      </a>
     </div>
   </div>
 </nav>
@@ -483,6 +512,35 @@
   </section>
 </main>
 
+<!-- ============ ADMIN PASSWORD MODAL ============ -->
+<div id="admin-modal" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-black/80 backdrop-blur-md">
+  <div class="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 sm:p-7 w-full max-w-sm mx-4 space-y-5 shadow-2xl shadow-red-950/40">
+    <div class="text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center mb-3 shadow-lg shadow-red-500/30">
+        <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-white">SafeZone Admin Moderation</h3>
+      <p class="text-xs text-slate-400 mt-1">Enter password to manage threat reports and road markings.</p>
+    </div>
+    <input id="admin-pw" type="password" placeholder="Enter admin password (admin123)"
+      class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition font-medium"
+      onkeydown="if(event.key==='Enter') submitAdminPw()" />
+    <p id="admin-error" class="text-xs text-red-400 hidden font-semibold">❌ Incorrect password. Try again.</p>
+    <div class="flex gap-3">
+      <button onclick="cancelAdminLogin()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-sm font-semibold hover:bg-slate-700 transition">
+        Return to Site
+      </button>
+      <button onclick="submitAdminPw()"
+        class="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 text-white text-sm font-bold hover:brightness-110 transition shadow-lg shadow-red-900/30">
+        Unlock
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ TOAST ============ -->
 <div id="toast" class="fixed bottom-6 right-6 z-[99999] hidden transition-all duration-300">
   <div class="px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold flex items-center gap-2 bg-slate-900 border border-slate-600 backdrop-blur-md"></div>
@@ -536,30 +594,157 @@ let drawPolyline = null;
 let drawMarkers = [];
 
 // ============================================================
-//  VIEW TOGGLE
+//  ROUTE DETECTION & ADMIN AUTH
 // ============================================================
-function switchView(view) {
-  if (view === 'admin' && !isAdmin) {
-    const pw = prompt('Enter admin password:');
-    if (pw !== 'admin123') { showToast('❌ Wrong password', 'red'); return; }
-    isAdmin = true;
-    showToast('✅ Admin access granted', 'emerald');
-  }
-  currentView = view;
-  document.getElementById('user-view').classList.toggle('hidden', view !== 'user');
-  document.getElementById('admin-view').classList.toggle('hidden', view !== 'admin');
-  document.getElementById('btn-user-view').className = view === 'user'
-    ? 'tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2'
-    : 'tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2';
-  document.getElementById('btn-admin-view').className = view === 'admin'
-    ? 'tab-active px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2'
-    : 'tab-inactive px-4 py-2 text-sm font-semibold rounded-lg btn-press flex items-center gap-2';
+function checkCurrentRoute() {
+  const path = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
+  return path === '/admin' ? 'admin' : 'user';
+}
 
-  // Invalidate map size after toggle
+function initRoute() {
+  const route = checkCurrentRoute();
+  currentView = route;
+
+  const userView = document.getElementById('user-view');
+  const adminView = document.getElementById('admin-view');
+  const userNav = document.getElementById('user-nav-actions');
+  const adminNav = document.getElementById('admin-nav-actions');
+  const modal = document.getElementById('admin-modal');
+
+  if (route === 'admin') {
+    // --- ADMIN URL (/admin) ---
+    // Hide regular User Report View container
+    if (userView) userView.classList.add('hidden');
+    // Show Admin Panel container
+    if (adminView) adminView.classList.remove('hidden');
+
+    // Navbar: show Admin Moderation Mode badge and ← Public Safety Feed link
+    if (userNav) {
+      userNav.classList.add('hidden');
+      userNav.classList.remove('flex');
+    }
+    if (adminNav) {
+      adminNav.classList.remove('hidden');
+      adminNav.classList.add('flex');
+    }
+
+    // Check sessionStorage authentication
+    const isAuth = sessionStorage.getItem('safezone_admin_auth') === 'true';
+    if (isAuth) {
+      isAdmin = true;
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      triggerAdminMapResize();
+    } else {
+      triggerAdminModal();
+    }
+
+  } else {
+    // --- USER URL (/) ---
+    // Completely hide the Admin Panel section and modal
+    if (adminView) adminView.classList.add('hidden');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    // Show User Report View
+    if (userView) userView.classList.remove('hidden');
+
+    // Navbar: show User Navbar Actions (Live Threat Engine Active, Report Unsafe Area, Emergency SOS)
+    if (adminNav) {
+      adminNav.classList.add('hidden');
+      adminNav.classList.remove('flex');
+    }
+    if (userNav) {
+      userNav.classList.remove('hidden');
+      userNav.classList.add('flex');
+    }
+
+    triggerUserMapResize();
+  }
+}
+
+function triggerAdminModal() {
+  const modal = document.getElementById('admin-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const pwInput = document.getElementById('admin-pw');
+    const errEl = document.getElementById('admin-error');
+    if (pwInput) pwInput.value = '';
+    if (errEl) errEl.classList.add('hidden');
+    setTimeout(() => { if (pwInput) pwInput.focus(); }, 100);
+  }
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById('admin-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+function cancelAdminLogin() {
+  closeAdminModal();
+  window.location.href = '/';
+}
+
+function submitAdminPw() {
+  const pwInput = document.getElementById('admin-pw');
+  const errEl = document.getElementById('admin-error');
+  const pw = pwInput ? pwInput.value : '';
+
+  if (pw === 'admin123') {
+    isAdmin = true;
+    sessionStorage.setItem('safezone_admin_auth', 'true');
+    closeAdminModal();
+    showToast('✅ Admin access granted', 'emerald');
+    triggerAdminMapResize();
+  } else {
+    if (errEl) errEl.classList.remove('hidden');
+    if (pwInput) {
+      pwInput.value = '';
+      pwInput.focus();
+    }
+  }
+}
+
+function triggerAdminMapResize() {
   setTimeout(() => {
-    if (view === 'user' && userMap) userMap.invalidateSize();
-    if (view === 'admin' && adminMap) adminMap.invalidateSize();
+    if (adminMap) {
+      adminMap.invalidateSize();
+    }
   }, 100);
+  setTimeout(() => {
+    if (adminMap) {
+      adminMap.invalidateSize();
+    }
+  }, 350);
+}
+
+function triggerUserMapResize() {
+  setTimeout(() => {
+    if (userMap) {
+      userMap.invalidateSize();
+    }
+  }, 100);
+  setTimeout(() => {
+    if (userMap) {
+      userMap.invalidateSize();
+    }
+  }, 350);
+}
+
+// Retain switchView for backwards compatibility
+function switchView(view) {
+  if (view === 'admin') {
+    window.location.href = '/admin';
+  } else {
+    window.location.href = '/';
+  }
 }
 
 // ============================================================
@@ -838,6 +1023,7 @@ function focusAreaOnMap(areaName) {
 }
 
 function renderRoadsOnMap(map, layers) {
+  if (!map) return;
   layers.forEach(l => map.removeLayer(l));
   layers.length = 0;
   (data.unsafeRoads || []).forEach(road => {
@@ -862,6 +1048,7 @@ function renderRoadsOnMap(map, layers) {
 }
 
 function renderIncidentPins(map, markerList) {
+  if (!map) return;
   markerList.forEach(m => map.removeLayer(m));
   markerList.length = 0;
 
@@ -1263,7 +1450,10 @@ function showToast(msg, color) {
 // ============================================================
 //  BOOT
 // ============================================================
-document.addEventListener('DOMContentLoaded', initMaps);
+document.addEventListener('DOMContentLoaded', () => {
+  initMaps();
+  initRoute();
+});
 </script>
 </body>
 </html>
